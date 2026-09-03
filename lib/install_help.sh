@@ -238,7 +238,7 @@ function BE_LinkMsglog {
 function BuildBE {
     RPOOL=${1:-rpool}
     typeset MEDIA="$2"
-    typeset _bename=${3:-omnios}
+    typeset _bename=${3:-${BENAME:-omnios}}
 
     if [ -z "$MEDIA" ]; then
         BOOTSRVA=`/sbin/dhcpinfo BootSrvA`
@@ -294,7 +294,7 @@ function FetchConfig {
 
 function MakeBootable {
     typeset _rpool=${1:-rpool}
-    typeset _bename=${2:-omnios}
+    typeset _bename=${2:-${BENAME:-omnios}}
     slog "Making boot environment bootable"
     logcmd zpool set bootfs=$_rpool/ROOT/$_bename $_rpool
     # Must do beadm activate first on the off chance we're bootstrapping from
@@ -400,15 +400,28 @@ function Reboot {
 
 function RunInstall {
     FetchConfig || bomb "Could not fetch kayak config for target"
+    # Mandrake (ADR-0014): refuse an answer file without the required
+    # verbs before any disk is touched.
+    if [ -n "$MANDRAKE_LIB_LOADED" ]; then
+        egrep -s MandrakeAdmin $ICFILE \
+            || bomb "Answer file has no MandrakeAdmin <user> <password>"
+        egrep -s MandrakeMgmt $ICFILE \
+            || bomb "Answer file has no MandrakeMgmt <link> dhcp|<addr/prefix> [gw]"
+    fi
     # Set RPOOL if it wasn't done so already. We need it set.
     RPOOL=${RPOOL:-rpool}
     . $ICFILE
+    # Mandrake (ADR-0014): write the recorded answers into the BE.
+    [ -n "$MANDRAKE_LIB_LOADED" ] && MandrakeApply
     Postboot 'exit $SMF_EXIT_OK'
     ApplyChanges || bomb "Could not apply all configuration changes"
     MakeBootable $RPOOL || bomb "Could not make new BE bootable"
     log "Installation complete"
     return 0
 }
+
+# Mandrake (ADR-0014): answer-file verbs, when the media carries them.
+[ -f /kayak/lib/mandrake.sh ] && . /kayak/lib/mandrake.sh
 
 # Vim hints
 # vim:ts=4:sw=4:et:fdm=marker

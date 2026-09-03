@@ -41,7 +41,7 @@ echo "Installing from ZFS image $ZFS_IMAGE"
 
 SetupLog /tmp/kayak.log
 
-prompt_hostname omnios
+prompt_hostname ${MANDRAKE_LIB_LOADED:+mandrake}${MANDRAKE_LIB_LOADED:-omnios}
 prompt_timezone
 
 # Because of kayak's small miniroot, just use C as the language for now.
@@ -50,6 +50,8 @@ LANG=C
 bename=omnios
 ver=`head -1 /etc/release | awk '{print $3}'`
 [ -n "$ver" ] && bename+="-$ver"
+# Mandrake (ADR-0014): the initial BE is mandrake-<version>.
+[ -n "$BENAME" ] && bename=$BENAME
 
 BuildBE $RPOOL $ZFS_IMAGE $bename
 ApplyChanges $HOSTNAME $TZ $LANG $keyboard_layout
